@@ -1,8 +1,16 @@
 {
   "name": "@pkmnprices/sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TypeScript/JavaScript client for the Pkmn Prices API",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/preaverage/pkmnprices-js.git"
+  },
+  "homepage": "https://github.com/preaverage/pkmnprices-js#readme",
+  "bugs": {
+    "url": "https://github.com/preaverage/pkmnprices-js/issues"
+  },
   "publishConfig": {
     "access": "public"
   },
