@@ -74,6 +74,15 @@ export interface CardSummary {
 }
 
 export interface Card extends CardSummary {
+  stage: string | null;
+  card_type: string | null;
+  weakness: string | null;
+  resistance: string | null;
+  retreat_cost: number | null;
+  energy_type: string[] | null;
+  ability: string | null;
+  flavor_text: string | null;
+  attacks: string[];
   prices: Price[];
 }
 
@@ -159,6 +168,10 @@ export interface ListCardsParams extends PageParams {
   number?: string;
   total_set_number?: string;
   rarity?: string;
+  stage?: string;
+  card_type?: string;
+  weakness?: string;
+  energy_type?: string;
   language?: string;
   currency?: CurrencyFilter;
   condition?: string;
