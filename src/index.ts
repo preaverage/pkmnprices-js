@@ -58,4 +58,7 @@ export type {
   SealedSummary,
   Set,
   SetRef,
+  TcgplayerListing,
+  TcgplayerListingsParams,
+  TcgplayerSort,
 } from "./types.js";

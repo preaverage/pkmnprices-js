@@ -125,6 +125,27 @@ export interface CardmarketListing {
   updated_at: string;
 }
 
+export interface TcgplayerListing {
+  id: number;
+  listing_id: number | null;
+  printing: string;
+  condition: string | null;
+  language: string | null;
+  price: number;
+  shipping_price: number | null;
+  seller_name: string | null;
+  seller_id: string | null;
+  seller_rating: number | null;
+  seller_sales: string | null;
+  quantity: number | null;
+  listing_type: string | null;
+  direct_seller: boolean | null;
+  gold_seller: boolean | null;
+  verified_seller: boolean | null;
+  custom_title: string | null;
+  updated_at: string;
+}
+
 export interface SealedSummary {
   id: number;
   tcg_player_id: number;
@@ -212,6 +233,17 @@ export interface CardmarketListingsParams extends CursorParams {
   min_price?: number;
   max_price?: number;
   sort?: CardmarketSort;
+}
+
+export type TcgplayerSort = "price_asc" | "price_desc";
+
+export interface TcgplayerListingsParams extends CursorParams {
+  condition?: string;
+  language?: string;
+  printing?: string;
+  min_price?: number;
+  max_price?: number;
+  sort?: TcgplayerSort;
 }
 
 export interface ListSealedParams extends PageParams {

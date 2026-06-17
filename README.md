@@ -42,7 +42,7 @@ Rate-limit `429`s are retried with backoff. Credit-limit `429`s (`credit_limit_e
 
 ## Pagination
 
-List endpoints return `{ data, pagination }`. Listing endpoints (eBay/Cardmarket) use cursors instead. Both have iterator helpers if you'd rather not track pages or cursors yourself:
+List endpoints return `{ data, pagination }`. Listing endpoints (eBay/Cardmarket/TCGplayer) use cursors instead. Both have iterator helpers if you'd rather not track pages or cursors yourself:
 
 ```ts
 for await (const card of client.cards.iterate({ name: "charizard" })) {
@@ -53,6 +53,10 @@ const allSets = await client.sets.listAll({ language: "english" });
 
 for await (const sale of client.cards.listings.iterateEbay(789, { grader: "PSA", grade: "10" })) {
   console.log(sale.title, sale.price);
+}
+
+for await (const offer of client.cards.listings.iterateTcgplayer(789, { condition: "Near Mint" })) {
+  console.log(offer.seller_name, offer.price, offer.shipping_price);
 }
 ```
 
@@ -71,7 +75,7 @@ client.health()
 
 client.sets          list  get  iterate  listAll
 client.cards         list  get  iterate  listAll  priceHistory  iteratePriceHistory
-client.cards.listings   ebay  iterateEbay  allEbay  cardmarket  iterateCardmarket  allCardmarket
+client.cards.listings   ebay  iterateEbay  allEbay  cardmarket  iterateCardmarket  allCardmarket  tcgplayer  iterateTcgplayer  allTcgplayer
 client.sealed        list  get  iterate  listAll  priceHistory  listings  iterateListings  allListings
 ```
 

@@ -13,9 +13,11 @@ import type {
   Paginated,
   PriceHistoryParams,
   PriceHistoryPoint,
+  TcgplayerListing,
+  TcgplayerListingsParams,
 } from "../types.js";
 
-// Sold eBay sales and live Cardmarket offers for a card.
+// Sold eBay sales and live Cardmarket / TCGplayer offers for a card.
 class CardListingsResource {
   constructor(private readonly http: HttpClient) {}
 
@@ -66,6 +68,33 @@ class CardListingsResource {
     params?: CardmarketListingsParams
   ): Promise<CardmarketListing[]> {
     return collect(this.iterateCardmarket(cardId, params));
+  }
+
+  tcgplayer(
+    cardId: number,
+    params?: TcgplayerListingsParams
+  ): Promise<CursorPaginated<TcgplayerListing>> {
+    return this.http.request({
+      path: `/v1/cards/${cardId}/listings/tcgplayer`,
+      query: { ...params },
+      auth: "apiKey",
+    });
+  }
+
+  iterateTcgplayer(
+    cardId: number,
+    params?: TcgplayerListingsParams
+  ): AsyncGenerator<TcgplayerListing> {
+    return iterateCursor((cursor) =>
+      this.tcgplayer(cardId, { ...params, cursor })
+    );
+  }
+
+  allTcgplayer(
+    cardId: number,
+    params?: TcgplayerListingsParams
+  ): Promise<TcgplayerListing[]> {
+    return collect(this.iterateTcgplayer(cardId, params));
   }
 }
 
