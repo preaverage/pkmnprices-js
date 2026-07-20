@@ -74,6 +74,8 @@ export interface CardSummary {
 }
 
 export interface Card extends CardSummary {
+  cardmarket_url: string | null;
+  cardmarket_product_id: number | null;
   stage: string | null;
   card_type: string | null;
   weakness: string | null;

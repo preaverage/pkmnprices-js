@@ -68,6 +68,19 @@ Every price has a `currency` field. Pass `currency` (`"usd"` or `"eur"`) to filt
 const card = await client.cards.get(789, { currency: "usd" });
 ```
 
+## Cardmarket Mapping
+
+Card detail responses expose Cardmarket's stable product identifiers when a
+mapping is available:
+
+```ts
+const card = await client.cards.get(789);
+console.log(card.cardmarket_url);
+console.log(card.cardmarket_product_id);
+```
+
+Both fields are `null` until the card has been mapped.
+
 ## Methods
 
 ```

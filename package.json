@@ -1,6 +1,6 @@
 {
   "name": "@pkmnprices/sdk",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "TypeScript/JavaScript client for the Pkmn Prices API",
   "license": "MIT",
   "repository": {
