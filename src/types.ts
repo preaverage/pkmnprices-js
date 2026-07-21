@@ -56,7 +56,14 @@ export interface Price {
   currency: Currency;
   condition: string | null;
   variant: string | null;
+  /** Primary display price. For Cardmarket: selected Price Guide metric. */
   market_price: number;
+  /** Cardmarket Price Guide low; null for other sources / missing guide value. */
+  low: number | null;
+  /** Cardmarket Price Guide trend; null for other sources / missing guide value. */
+  trend: number | null;
+  /** Cardmarket Price Guide avg; null for other sources / missing guide value. Not avg1/7/30. */
+  avg: number | null;
   created_at: string;
 }
 

@@ -62,7 +62,7 @@ for await (const offer of client.cards.listings.iterateTcgplayer(789, { conditio
 
 ## Currency
 
-Every price has a `currency` field. Pass `currency` (`"usd"` or `"eur"`) to filter, or leave it off to get everything your plan allows. EUR (Cardmarket) prices need a Pro plan; a free key asking for `eur` gets a `ForbiddenError`.
+Every price has a `currency` field. Cardmarket prices may also include nullable `low`, `trend`, and `avg` Price Guide values (`market_price` remains the primary display field). Pass `currency` (`"usd"` or `"eur"`) to filter, or leave it off to get everything your plan allows. EUR (Cardmarket) prices need a Pro plan; a free key asking for `eur` gets a `ForbiddenError`.
 
 ```ts
 const card = await client.cards.get(789, { currency: "usd" });
