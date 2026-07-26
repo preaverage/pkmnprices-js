@@ -1,14 +1,11 @@
 import type { HttpClient } from "../http.js";
-import { collect, iterateCursor, iteratePages } from "../pagination.js";
+import { collect, iteratePages } from "../pagination.js";
 import type {
-  CursorPaginated,
   ListSealedParams,
   Paginated,
   PriceHistoryParams,
   PriceHistoryPoint,
   Sealed,
-  SealedEbayListing,
-  SealedListingsParams,
   SealedSummary,
 } from "../types.js";
 
@@ -59,33 +56,5 @@ export class SealedResource {
       (page) => this.priceHistory(id, { ...params, page }),
       params?.page ?? 1
     );
-  }
-
-  // Sold eBay listings, New condition only.
-  listings(
-    id: number,
-    params?: SealedListingsParams
-  ): Promise<CursorPaginated<SealedEbayListing>> {
-    return this.http.request({
-      path: `/v1/sealed/${id}/listings`,
-      query: { ...params },
-      auth: "apiKey",
-    });
-  }
-
-  iterateListings(
-    id: number,
-    params?: SealedListingsParams
-  ): AsyncGenerator<SealedEbayListing> {
-    return iterateCursor((cursor) =>
-      this.listings(id, { ...params, cursor })
-    );
-  }
-
-  allListings(
-    id: number,
-    params?: SealedListingsParams
-  ): Promise<SealedEbayListing[]> {
-    return collect(this.iterateListings(id, params));
   }
 }
