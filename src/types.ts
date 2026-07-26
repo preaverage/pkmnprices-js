@@ -107,18 +107,14 @@ export interface PriceHistoryPoint {
   sale_count: number;
 }
 
-export type EbaySaleType = "auction" | "buy_it_now" | string;
-
 export interface EbayListing {
   id: number;
-  ebay_listing_id: string;
   title: string;
   price: number;
   grader: string | null;
   grade: string | null;
-  sale_type: EbaySaleType;
   sold_at: string;
-  listing_url: string;
+  listing_url: string | null;
 }
 
 export interface CardmarketListing {
@@ -165,16 +161,6 @@ export interface SealedSummary {
 
 export interface Sealed extends SealedSummary {
   prices: Price[];
-}
-
-export interface SealedEbayListing {
-  id: number;
-  ebay_listing_id: string;
-  title: string;
-  price: number;
-  sale_type: EbaySaleType;
-  sold_at: string;
-  listing_url: string;
 }
 
 export type HealthStatus = "healthy" | "degraded" | "unreachable";
@@ -226,6 +212,7 @@ export interface PriceHistoryParams {
 export type ListingSort = "date_desc" | "date_asc" | "price_asc" | "price_desc";
 
 export interface EbayListingsParams extends CursorParams {
+  graded?: boolean;
   grader?: string;
   grade?: string;
   min_price?: number;
@@ -262,10 +249,4 @@ export interface ListSealedParams extends PageParams {
   min_price?: number;
   max_price?: number;
   sort?: CardSort;
-}
-
-export interface SealedListingsParams extends CursorParams {
-  min_price?: number;
-  max_price?: number;
-  sort?: ListingSort;
 }

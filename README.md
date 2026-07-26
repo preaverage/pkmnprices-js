@@ -51,7 +51,7 @@ for await (const card of client.cards.iterate({ name: "charizard" })) {
 
 const allSets = await client.sets.listAll({ language: "english" });
 
-for await (const sale of client.cards.listings.iterateEbay(789, { grader: "PSA", grade: "10" })) {
+for await (const sale of client.cards.listings.iterateEbay(789, { graded: true, grader: "PSA", grade: "10" })) {
   console.log(sale.title, sale.price);
 }
 
@@ -89,7 +89,7 @@ client.health()
 client.sets          list  get  iterate  listAll
 client.cards         list  get  iterate  listAll  priceHistory  iteratePriceHistory
 client.cards.listings   ebay  iterateEbay  allEbay  cardmarket  iterateCardmarket  allCardmarket  tcgplayer  iterateTcgplayer  allTcgplayer
-client.sealed        list  get  iterate  listAll  priceHistory  listings  iterateListings  allListings
+client.sealed        list  get  iterate  listAll  priceHistory  iteratePriceHistory
 ```
 
 ## Errors
