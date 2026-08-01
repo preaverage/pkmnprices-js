@@ -54,6 +54,7 @@ export interface Set {
 export interface Price {
   source: PriceSource;
   currency: Currency;
+  /** Null on Cardmarket rows: the Price Guide covers every condition at once. */
   condition: string | null;
   variant: string | null;
   /** Primary display price. For Cardmarket: selected Price Guide metric. */
@@ -115,19 +116,6 @@ export interface EbayListing {
   grade: string | null;
   sold_at: string;
   listing_url: string | null;
-}
-
-export interface CardmarketListing {
-  id: number;
-  article_id: number;
-  price: number;
-  variant: string | null;
-  condition: string | null;
-  seller: string;
-  quantity: number;
-  language: string | null;
-  comment: string | null;
-  updated_at: string;
 }
 
 export interface TcgplayerListing {
@@ -218,17 +206,6 @@ export interface EbayListingsParams extends CursorParams {
   min_price?: number;
   max_price?: number;
   sort?: ListingSort;
-}
-
-export type CardmarketSort = "price_asc" | "price_desc";
-
-export interface CardmarketListingsParams extends CursorParams {
-  condition?: string;
-  language?: string;
-  variant?: string;
-  min_price?: number;
-  max_price?: number;
-  sort?: CardmarketSort;
 }
 
 export type TcgplayerSort = "price_asc" | "price_desc";
