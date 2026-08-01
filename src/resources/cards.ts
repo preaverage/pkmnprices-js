@@ -2,8 +2,6 @@ import type { HttpClient } from "../http.js";
 import { collect, iterateCursor, iteratePages } from "../pagination.js";
 import type {
   Card,
-  CardmarketListing,
-  CardmarketListingsParams,
   CardSummary,
   CursorPaginated,
   EbayListing,
@@ -17,7 +15,7 @@ import type {
   TcgplayerListingsParams,
 } from "../types.js";
 
-// Sold eBay sales and live Cardmarket / TCGplayer offers for a card.
+// Sold eBay sales and live TCGplayer offers for a card.
 class CardListingsResource {
   constructor(private readonly http: HttpClient) {}
 
@@ -41,33 +39,6 @@ class CardListingsResource {
 
   allEbay(cardId: number, params?: EbayListingsParams): Promise<EbayListing[]> {
     return collect(this.iterateEbay(cardId, params));
-  }
-
-  cardmarket(
-    cardId: number,
-    params?: CardmarketListingsParams
-  ): Promise<CursorPaginated<CardmarketListing>> {
-    return this.http.request({
-      path: `/v1/cards/${cardId}/listings/cardmarket`,
-      query: { ...params },
-      auth: "apiKey",
-    });
-  }
-
-  iterateCardmarket(
-    cardId: number,
-    params?: CardmarketListingsParams
-  ): AsyncGenerator<CardmarketListing> {
-    return iterateCursor((cursor) =>
-      this.cardmarket(cardId, { ...params, cursor })
-    );
-  }
-
-  allCardmarket(
-    cardId: number,
-    params?: CardmarketListingsParams
-  ): Promise<CardmarketListing[]> {
-    return collect(this.iterateCardmarket(cardId, params));
   }
 
   tcgplayer(
