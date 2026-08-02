@@ -66,6 +66,7 @@ Every price has a `currency` field. Pass `currency` (`"usd"` or `"eur"`) to filt
 
 ```ts
 const card = await client.cards.get(789, { currency: "usd" });
+const box = await client.sealed.get(5678, { currency: "eur" });
 ```
 
 Cardmarket prices come from the Price Guide, which folds every condition and
@@ -76,16 +77,20 @@ EUR prices by `variant` rather than `condition`.
 
 ## Cardmarket Mapping
 
-Card detail responses expose Cardmarket's stable product identifiers when a
-mapping is available:
+Card and sealed detail responses expose Cardmarket's stable product identifiers
+when a mapping is available:
 
 ```ts
 const card = await client.cards.get(789);
 console.log(card.cardmarket_url);
 console.log(card.cardmarket_product_id);
+
+const box = await client.sealed.get(5678);
+console.log(box.cardmarket_url);
+console.log(box.cardmarket_product_id);
 ```
 
-Both fields are `null` until the card has been mapped.
+Both fields are `null` until the product has been mapped.
 
 ## Methods
 

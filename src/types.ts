@@ -148,6 +148,8 @@ export interface SealedSummary {
 }
 
 export interface Sealed extends SealedSummary {
+  cardmarket_url: string | null;
+  cardmarket_product_id: number | null;
   prices: Price[];
 }
 
@@ -223,7 +225,12 @@ export interface ListSealedParams extends PageParams {
   set_id?: number;
   name?: string;
   language?: string;
+  currency?: CurrencyFilter;
   min_price?: number;
   max_price?: number;
   sort?: CardSort;
+}
+
+export interface GetSealedParams {
+  currency?: CurrencyFilter;
 }
