@@ -35,6 +35,7 @@ export type {
   EbayListing,
   EbayListingsParams,
   GetCardParams,
+  GetSealedParams,
   Health,
   HealthStatus,
   ListCardsParams,

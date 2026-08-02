@@ -1,6 +1,7 @@
 import type { HttpClient } from "../http.js";
 import { collect, iteratePages } from "../pagination.js";
 import type {
+  GetSealedParams,
   ListSealedParams,
   Paginated,
   PriceHistoryParams,
@@ -22,8 +23,12 @@ export class SealedResource {
     });
   }
 
-  get(id: number): Promise<Sealed> {
-    return this.http.request({ path: `/v1/sealed/${id}`, auth: "apiKey" });
+  get(id: number, params?: GetSealedParams): Promise<Sealed> {
+    return this.http.request({
+      path: `/v1/sealed/${id}`,
+      query: { ...params },
+      auth: "apiKey",
+    });
   }
 
   iterate(params?: ListSealedParams): AsyncGenerator<SealedSummary> {
