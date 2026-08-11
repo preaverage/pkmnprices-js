@@ -54,17 +54,10 @@ export interface Set {
 export interface Price {
   source: PriceSource;
   currency: Currency;
-  /** Null on Cardmarket rows: the Price Guide covers every condition at once. */
   condition: string | null;
   variant: string | null;
-  /** Primary display price. For Cardmarket: selected Price Guide metric. */
+  /** Current price for this exact source, condition, and variant. */
   market_price: number;
-  /** Cardmarket Price Guide low; null for other sources / missing guide value. */
-  low: number | null;
-  /** Cardmarket Price Guide trend; null for other sources / missing guide value. */
-  trend: number | null;
-  /** Cardmarket Price Guide avg; null for other sources / missing guide value. Not avg1/7/30. */
-  avg: number | null;
   created_at: string;
 }
 
@@ -116,6 +109,19 @@ export interface EbayListing {
   grade: string | null;
   sold_at: string;
   listing_url: string | null;
+}
+
+export interface CardmarketListing {
+  id: number;
+  article_id: number | null;
+  price: number;
+  variant: string;
+  condition: string | null;
+  seller: string | null;
+  quantity: number | null;
+  language: string | null;
+  comment: string | null;
+  updated_at: string;
 }
 
 export interface TcgplayerListing {
@@ -210,7 +216,18 @@ export interface EbayListingsParams extends CursorParams {
   sort?: ListingSort;
 }
 
-export type TcgplayerSort = "price_asc" | "price_desc";
+export type MarketplaceSort = "price_asc" | "price_desc";
+
+export interface CardmarketListingsParams extends CursorParams {
+  condition?: string;
+  /** "Reverse Holo" and "Reverse Holofoil" are equivalent. */
+  variant?: string;
+  min_price?: number;
+  max_price?: number;
+  sort?: MarketplaceSort;
+}
+
+export type TcgplayerSort = MarketplaceSort;
 
 export interface TcgplayerListingsParams extends CursorParams {
   condition?: string;

@@ -42,7 +42,7 @@ Rate-limit `429`s are retried with backoff. Credit-limit `429`s (`credit_limit_e
 
 ## Pagination
 
-List endpoints return `{ data, pagination }`. Listing endpoints (eBay/TCGplayer) use cursors instead. Both have iterator helpers if you'd rather not track pages or cursors yourself:
+List endpoints return `{ data, pagination }`. Listing endpoints (eBay, Cardmarket, and TCGplayer) use cursors instead. Both have iterator helpers if you'd rather not track pages or cursors yourself:
 
 ```ts
 for await (const card of client.cards.iterate({ name: "charizard" })) {
@@ -53,6 +53,10 @@ const allSets = await client.sets.listAll({ language: "english" });
 
 for await (const sale of client.cards.listings.iterateEbay(789, { graded: true, grader: "PSA", grade: "10" })) {
   console.log(sale.title, sale.price);
+}
+
+for await (const offer of client.cards.listings.iterateCardmarket(789, { condition: "Near Mint", variant: "Reverse Holo" })) {
+  console.log(offer.seller, offer.price, offer.language);
 }
 
 for await (const offer of client.cards.listings.iterateTcgplayer(789, { condition: "Near Mint" })) {
@@ -69,11 +73,12 @@ const card = await client.cards.get(789, { currency: "usd" });
 const box = await client.sealed.get(5678, { currency: "eur" });
 ```
 
-Cardmarket prices come from the Price Guide, which folds every condition and
-language into one figure per printing, so their `condition` is `null` — don't
-read them as Near Mint. They also carry nullable `low`, `trend`, and `avg` guide
-values alongside `market_price`, which stays the primary display field. Group
-EUR prices by `variant` rather than `condition`.
+Cardmarket current prices are condition- and printing-specific marketplace
+prices. Each EUR row has one `market_price` for its exact `condition` and
+`variant`; for example, a Near Mint Reverse Holofoil price is distinct from a
+Mint or Normal price. The retired Price Guide `low`, `trend`, and `avg` fields
+are not returned. Live Cardmarket listings are automatically restricted to the
+card's language.
 
 ## Cardmarket Mapping
 
@@ -99,7 +104,7 @@ client.health()
 
 client.sets          list  get  iterate  listAll
 client.cards         list  get  iterate  listAll  priceHistory  iteratePriceHistory
-client.cards.listings   ebay  iterateEbay  allEbay  tcgplayer  iterateTcgplayer  allTcgplayer
+client.cards.listings   ebay  iterateEbay  allEbay  cardmarket  iterateCardmarket  allCardmarket  tcgplayer  iterateTcgplayer  allTcgplayer
 client.sealed        list  get  iterate  listAll  priceHistory  iteratePriceHistory
 ```
 
