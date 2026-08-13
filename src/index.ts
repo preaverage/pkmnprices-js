@@ -53,6 +53,7 @@ export type {
   PriceHistoryPoint,
   PriceSource,
   Sealed,
+  SealedEbayListingsParams,
   SealedSummary,
   Set,
   SetRef,

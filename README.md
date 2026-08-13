@@ -64,6 +64,23 @@ for await (const offer of client.cards.listings.iterateTcgplayer(789, { conditio
 }
 ```
 
+Sealed products carry the same two listing sources, under `client.sealed.listings`:
+
+```ts
+for await (const offer of client.sealed.listings.iterateTcgplayer(5678)) {
+  console.log(offer.seller_name, offer.price, offer.quantity);
+}
+
+for await (const sale of client.sealed.listings.iterateEbay(5678, { sort: "price_desc" })) {
+  console.log(sale.title, sale.price, sale.sold_at);
+}
+```
+
+Sealed TCGplayer offers are normally condition `"Unopened"` with an empty
+`printing`, so those two filters rarely narrow anything. Sealed eBay sales are
+never graded, so `graded`, `grader`, and `grade` aren't accepted there and
+`grader`/`grade` come back `null`.
+
 ## Currency
 
 Every price has a `currency` field. Pass `currency` (`"usd"` or `"eur"`) to filter, or leave it off to get everything your plan allows. EUR (Cardmarket) prices need a Pro plan; a free key asking for `eur` gets a `ForbiddenError`.
@@ -106,6 +123,7 @@ client.sets          list  get  iterate  listAll
 client.cards         list  get  iterate  listAll  priceHistory  iteratePriceHistory
 client.cards.listings   ebay  iterateEbay  allEbay  cardmarket  iterateCardmarket  allCardmarket  tcgplayer  iterateTcgplayer  allTcgplayer
 client.sealed        list  get  iterate  listAll  priceHistory  iteratePriceHistory
+client.sealed.listings  ebay  iterateEbay  allEbay  tcgplayer  iterateTcgplayer  allTcgplayer
 ```
 
 ## Errors
