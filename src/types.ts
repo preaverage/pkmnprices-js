@@ -216,6 +216,13 @@ export interface EbayListingsParams extends CursorParams {
   sort?: ListingSort;
 }
 
+/** Sealed eBay sales are never graded, so the grading filters don't apply. */
+export interface SealedEbayListingsParams extends CursorParams {
+  min_price?: number;
+  max_price?: number;
+  sort?: ListingSort;
+}
+
 export type MarketplaceSort = "price_asc" | "price_desc";
 
 export interface CardmarketListingsParams extends CursorParams {
