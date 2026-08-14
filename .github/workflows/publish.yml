@@ -17,5 +17,14 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
       - run: npm install -g npm@latest
+      - name: Verify release tag matches package.json version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::Release tag $GITHUB_REF_NAME does not match package.json version $pkg."
+            echo "npm publishes the manifest version, not the tag. Bump package.json or retag as v$pkg."
+            exit 1
+          fi
       - run: npm ci
       - run: npm publish
