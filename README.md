@@ -81,6 +81,32 @@ Sealed TCGplayer offers are normally condition `"Unopened"` with an empty
 never graded, so `graded`, `grader`, and `grade` aren't accepted there and
 `grader`/`grade` come back `null`.
 
+## Cardmarket special attributes
+
+Cardmarket sells more than one kind of good under a single card. Every
+Cardmarket offer carries three booleans, and they are always present:
+
+```ts
+for await (const offer of client.cards.listings.iterateCardmarket(789)) {
+  if (offer.graded) console.log(offer.grader, offer.grade); // "PSA", "10"
+  if (offer.signed || offer.altered) continue;              // not a clean card
+}
+```
+
+A `signed`, `altered` or `graded` offer is real, and it is returned, but it does
+**not** contribute to the card's market price. A signed and altered Near Mint
+copy at EUR 200 must not set the Near Mint price of a card whose clean copies
+sell for EUR 3,800, and a slab is priced for the slab rather than for the card.
+
+The practical consequence: **the cheapest row you get back is not necessarily
+the card's `market_price`.** Filter these out before deriving a price yourself.
+
+`grader` and `grade` are named to match the graded eBay sale shape, so "PSA 10"
+renders the same way whichever source it came from. Both are `null` unless
+`graded` is true, and can be `null` even then — Cardmarket flags a slab without
+always naming the grader, and the details are read from free-text seller
+comments.
+
 ## Languages
 
 A card's language comes from its set, and it decides what pricing that card can
