@@ -122,6 +122,29 @@ export interface CardmarketListing {
   language: string | null;
   comment: string | null;
   updated_at: string;
+  /**
+   * Cardmarket's per-listing special attributes. Any of these being `true`
+   * means the offer is real but does **not** contribute to the card's market
+   * price: a signed and altered Near Mint copy at EUR 200 must not set the
+   * Near Mint price of a card whose clean copies sell for EUR 3,800, and a
+   * slab is priced for the slab rather than for the card.
+   *
+   * Because of that, the cheapest row returned by `cardmarket()` is not
+   * necessarily the card's `market_price`. Filter these out before deriving a
+   * price of your own.
+   */
+  signed: boolean;
+  altered: boolean;
+  graded: boolean;
+  /**
+   * Slab details, named to match the graded eBay sale shape so "PSA 10"
+   * renders the same way whichever source it came from. Null unless `graded`
+   * is true, and possibly null even then — Cardmarket flags a slab without
+   * always naming the grader, and these are read from free-text seller
+   * comments.
+   */
+  grader: string | null;
+  grade: string | null;
 }
 
 export interface TcgplayerListing {
