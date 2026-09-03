@@ -41,6 +41,7 @@ export type {
   Health,
   HealthStatus,
   ListCardsParams,
+  ListingAttribution,
   ListingSort,
   ListSealedParams,
   ListSetsParams,
