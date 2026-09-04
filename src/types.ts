@@ -101,13 +101,42 @@ export interface PriceHistoryPoint {
   sale_count: number;
 }
 
+/**
+ * Whether a sold comp describes this card alone.
+ *
+ * A variant and its base card can map to one source product page. When they
+ * do, both serve the same sales, with titles describing whichever printing
+ * the seller actually sold.
+ *
+ * - `exact` — the source page is mapped to this card and no other.
+ * - `shared` — the page is shared, so this sale appears in another card's
+ *   feed too and its title may describe that printing. Price the group, not
+ *   the entity, or filter these out.
+ * - `unknown` — collected before the source printing was recorded, so
+ *   sharing cannot be determined.
+ */
+export type ListingAttribution = "exact" | "shared" | "unknown";
+
 export interface EbayListing {
   id: number;
   title: string;
   price: number;
   grader: string | null;
+  /**
+   * Grades are strings, not numbers, and include halves ("9.5", "1.5"). A
+   * filter of `grade: "9"` matches PSA 9 and not BGS 9.5.
+   */
   grade: string | null;
+  /** The printing this comp was collected under, e.g. "Holofoil". */
+  variant: string | null;
+  attribution: ListingAttribution;
   sold_at: string;
+  /**
+   * When we collected the sale, which is not when it sold. Collection runs
+   * regularly bring in sales that are weeks old, so this is the field to
+   * checkpoint on when polling `since` for new comps.
+   */
+  ingested_at: string;
   listing_url: string | null;
 }
 
@@ -165,7 +194,20 @@ export interface TcgplayerListing {
   gold_seller: boolean | null;
   verified_seller: boolean | null;
   custom_title: string | null;
+  /**
+   * When this listing's own fields last changed. Not a freshness signal: an
+   * offer live and unchanged for a month keeps a month-old value however
+   * recently it was confirmed. Read `snapshot_at` for that.
+   */
   updated_at: string;
+  /**
+   * When this product's listings were last confirmed against TCGplayer. The
+   * same for every row in a response, since a snapshot replaces a product's
+   * listings wholesale. Listings refresh daily, so a value well over a day
+   * old means that product's last fetch did not succeed. Null if no
+   * successful snapshot has been recorded.
+   */
+  snapshot_at: string | null;
 }
 
 export interface SealedSummary {
@@ -230,17 +272,38 @@ export interface PriceHistoryParams {
 
 export type ListingSort = "date_desc" | "date_asc" | "price_asc" | "price_desc";
 
-export interface EbayListingsParams extends CursorParams {
+/**
+ * Only comps ingested after this instant. An RFC 3339 timestamp, or
+ * `YYYY-MM-DD` for midnight UTC. The bound is exclusive, so the
+ * `ingested_at` of the newest row you hold can go straight back in.
+ *
+ * Filters on ingestion, not on sale date: a sale-date bound would
+ * permanently step over comps that arrive back-dated. A malformed value is
+ * rejected rather than ignored.
+ */
+type SinceParam = { since?: string };
+
+export interface EbayListingsParams extends CursorParams, SinceParam {
+  /**
+   * `true` returns every comp with grading information, `false` returns
+   * every comp without it. The two are exact complements.
+   */
   graded?: boolean;
   grader?: string;
   grade?: string;
   min_price?: number;
   max_price?: number;
+  /** Restrict to one printing, e.g. "Holofoil". */
+  variant?: string;
   sort?: ListingSort;
 }
 
-/** Sealed eBay sales are never graded, so the grading filters don't apply. */
-export interface SealedEbayListingsParams extends CursorParams {
+/**
+ * Sealed eBay sales are never graded, so the grading filters don't apply.
+ * Sealed products map one source page each with no printing to distinguish,
+ * so there is no `variant` filter either.
+ */
+export interface SealedEbayListingsParams extends CursorParams, SinceParam {
   min_price?: number;
   max_price?: number;
   sort?: ListingSort;
