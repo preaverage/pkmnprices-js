@@ -1,6 +1,7 @@
 import type { HttpClient } from "../http.js";
 import { collect, iterateCursor, iteratePages } from "../pagination.js";
 import type {
+  CardmarketListing,
   CursorPaginated,
   EbayListing,
   GetSealedParams,
@@ -9,13 +10,14 @@ import type {
   PriceHistoryParams,
   PriceHistoryPoint,
   Sealed,
+  SealedCardmarketListingsParams,
   SealedEbayListingsParams,
   SealedSummary,
   TcgplayerListing,
   TcgplayerListingsParams,
 } from "../types.js";
 
-// Sold eBay sales and live TCGplayer offers for a sealed product.
+// Sold eBay sales and live Cardmarket/TCGplayer offers for a sealed product.
 class SealedListingsResource {
   constructor(private readonly http: HttpClient) {}
 
@@ -55,6 +57,36 @@ class SealedListingsResource {
       query: { ...params },
       auth: "apiKey",
     });
+  }
+
+  // `opened` is meaningful only on these rows: a card is neither sealed nor
+  // unsealed. Like `signed`/`altered`/`graded`, an opened offer is returned but
+  // does not contribute to the market price.
+  cardmarket(
+    sealedId: number,
+    params?: SealedCardmarketListingsParams
+  ): Promise<CursorPaginated<CardmarketListing>> {
+    return this.http.request({
+      path: `/v1/sealed/${sealedId}/listings/cardmarket`,
+      query: { ...params },
+      auth: "apiKey",
+    });
+  }
+
+  iterateCardmarket(
+    sealedId: number,
+    params?: SealedCardmarketListingsParams
+  ): AsyncGenerator<CardmarketListing> {
+    return iterateCursor((cursor) =>
+      this.cardmarket(sealedId, { ...params, cursor })
+    );
+  }
+
+  allCardmarket(
+    sealedId: number,
+    params?: SealedCardmarketListingsParams
+  ): Promise<CardmarketListing[]> {
+    return collect(this.iterateCardmarket(sealedId, params));
   }
 
   iterateTcgplayer(
