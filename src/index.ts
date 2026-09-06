@@ -54,6 +54,7 @@ export type {
   PriceHistoryPoint,
   PriceSource,
   Sealed,
+  SealedCardmarketListingsParams,
   SealedEbayListingsParams,
   SealedSummary,
   Set,

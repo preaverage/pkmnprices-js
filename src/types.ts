@@ -160,7 +160,8 @@ export interface CardmarketListing {
    *
    * Because of that, the cheapest row returned by `cardmarket()` is not
    * necessarily the card's `market_price`. Filter these out before deriving a
-   * price of your own.
+   * price of your own — along with `opened`, and with any row whose
+   * `sell_count` is `0`.
    */
   signed: boolean;
   altered: boolean;
@@ -174,6 +175,28 @@ export interface CardmarketListing {
    */
   grader: string | null;
   grade: string | null;
+  /**
+   * The offer's own seller says the item is not sealed — an opened wrapper, or
+   * a display missing its shrink. Sealed products only; always `false` on a
+   * card listing, where the distinction does not exist.
+   *
+   * Treated like `signed`/`altered`/`graded`: a real offer, excluded from the
+   * market price. A Jungle booster pack whose every other offer sits between
+   * EUR 799 and EUR 950 carries one at EUR 10.00 reading "Not Sealed (open,
+   * just the booster)" — a real price for an opened pack, not a EUR 10 Jungle
+   * booster pack.
+   */
+  opened: boolean;
+  /**
+   * The seller's completed sales, as Cardmarket reports them. This is why a
+   * `market_price` can sit **above** the cheapest listing you can see: an
+   * offer from a seller with no completed sales does not set a price.
+   *
+   * `null` is not zero. `null` means no count was recorded for this row; `0`
+   * means Cardmarket reports the seller as having sold nothing. If you are
+   * reimplementing the price rule, treat only `0` as disqualifying.
+   */
+  sell_count: number | null;
 }
 
 export interface TcgplayerListing {
@@ -315,6 +338,17 @@ export interface CardmarketListingsParams extends CursorParams {
   condition?: string;
   /** "Reverse Holo" and "Reverse Holofoil" are equivalent. */
   variant?: string;
+  min_price?: number;
+  max_price?: number;
+  sort?: MarketplaceSort;
+}
+
+/**
+ * Sealed products take no `variant`: every sealed Cardmarket row is written
+ * with an empty variant, so the filter could only ever exclude everything.
+ */
+export interface SealedCardmarketListingsParams extends CursorParams {
+  condition?: string;
   min_price?: number;
   max_price?: number;
   sort?: MarketplaceSort;
