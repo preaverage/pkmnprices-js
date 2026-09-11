@@ -12,6 +12,8 @@ export interface ApiErrorBody {
   error: {
     code: string;
     message: string;
+    /** Documentation for this class of error. */
+    docs_url?: string;
   };
 }
 
@@ -27,6 +29,7 @@ export interface PkmnPricesErrorInit {
   status: number;
   code: string;
   message: string;
+  docsUrl: string | null;
   rateLimit: RateLimitInfo;
   retryAfterMs: number | null;
 }
@@ -35,6 +38,12 @@ export interface PkmnPricesErrorInit {
 export class PkmnPricesError extends Error {
   readonly status: number;
   readonly code: string;
+  /**
+   * The docs page for this class of error, as sent by the API: a 401 points
+   * at authentication, a 403 at pricing, a 429 at rate limits. Null when the
+   * response carried no body to read it from.
+   */
+  readonly docsUrl: string | null;
   readonly rateLimit: RateLimitInfo;
   readonly retryAfterMs: number | null;
 
@@ -43,6 +52,7 @@ export class PkmnPricesError extends Error {
     this.name = new.target.name;
     this.status = init.status;
     this.code = init.code;
+    this.docsUrl = init.docsUrl;
     this.rateLimit = init.rateLimit;
     this.retryAfterMs = init.retryAfterMs;
   }
@@ -66,6 +76,7 @@ export class ConnectionError extends PkmnPricesError {
       status: 0,
       code: "connection_error",
       message,
+      docsUrl: null,
       rateLimit: {
         creditsCharged: null,
         creditsLimit: null,

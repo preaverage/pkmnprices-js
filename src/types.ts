@@ -126,6 +126,16 @@ export interface EbayListing {
    * filter of `grade: "9"` matches PSA 9 and not BGS 9.5.
    */
   grade: string | null;
+  /**
+   * Which tier of `grade` this is, when the grader issues more than one at
+   * that number: "Pristine" for a CGC 10 that is not a Gem Mint, "Black
+   * Label" for a BGS 10 that is not a plain 10. A Pristine ten sells well
+   * above a Gem Mint ten, so a population that mixes them prices neither.
+   * Null for the tier with no name of its own, which is nearly every comp,
+   * and for comps collected before the tier was recorded. `grade: "10"`
+   * still matches every tier; split them by reading this.
+   */
+  grade_qualifier: string | null;
   /** The printing this comp was collected under, e.g. "Holofoil". */
   variant: string | null;
   attribution: ListingAttribution;
@@ -275,6 +285,7 @@ export interface ListCardsParams extends PageParams {
   currency?: CurrencyFilter;
   condition?: string;
   variant?: string;
+  grader?: string;
   grade?: string;
   min_price?: number;
   max_price?: number;
@@ -290,6 +301,10 @@ export interface PriceHistoryParams {
   currency?: CurrencyFilter;
   limit?: number;
   page?: number;
+  /** Exact match, e.g. "Near Mint" (TCGplayer) or "Excellent" (Cardmarket). */
+  condition?: string;
+  /** Exact match, e.g. "Holofoil". */
+  variant?: string;
 }
 
 export type ListingSort = "date_desc" | "date_asc" | "price_asc" | "price_desc";

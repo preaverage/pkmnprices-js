@@ -117,6 +117,20 @@ can be read one printing at a time:
 const holo = await client.cards.listings.allEbay(789, { variant: "Holofoil" });
 ```
 
+## Two grades can print the same number
+
+A CGC Pristine 10 and a CGC Gem Mint 10 both carry `grade: "10"`, and so do
+a BGS Black Label 10 and a plain BGS 10. The higher tier sells well above
+the lower one, so `grade_qualifier` tells them apart: `"Pristine"`,
+`"Black Label"`, or `null` for the tier with no name of its own, which is
+nearly every comp. Filtering `grade: "10"` returns every tier; split the
+population yourself:
+
+```ts
+const tens = await client.cards.listings.allEbay(789, { grader: "CGC", grade: "10" });
+const pristine = tens.filter((s) => s.grade_qualifier === "Pristine");
+```
+
 ## Polling for new comps
 
 Credits are charged per row returned, so re-reading a page of comps you already
@@ -310,7 +324,7 @@ client.sealed.listings  ebay  iterateEbay  allEbay  cardmarket  iterateCardmarke
 
 ## Errors
 
-Everything thrown extends `PkmnPricesError`, which carries `status`, `code`, `message`, `rateLimit`, and `retryAfterMs`.
+Everything thrown extends `PkmnPricesError`, which carries `status`, `code`, `message`, `docsUrl`, `rateLimit`, and `retryAfterMs`. `docsUrl` is the docs page for that class of error as sent by the API, so a 401 points at authentication, a 403 at pricing and a 429 at rate limits; it is `null` when the response had no body to read it from.
 
 ```ts
 import { ForbiddenError, NotFoundError, RateLimitError } from "@pkmnprices/sdk";
