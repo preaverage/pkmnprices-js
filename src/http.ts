@@ -198,11 +198,16 @@ export class HttpClient {
     const message = isErrorBody(body)
       ? body.error.message
       : `Request to ${spec.path} failed with status ${response.status}`;
+    const docsUrl =
+      isErrorBody(body) && typeof body.error.docs_url === "string"
+        ? body.error.docs_url
+        : null;
 
     throw createApiError({
       status: response.status,
       code,
       message,
+      docsUrl,
       rateLimit,
       retryAfterMs: parseRetryAfter(response.headers),
     });
