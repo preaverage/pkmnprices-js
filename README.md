@@ -161,6 +161,23 @@ One thing `snapshot_at` cannot tell you: listings are collected from a US
 vantage point with no shipping-destination filter, so a response can contain
 offers TCGplayer's own site hides from you when you browse it from elsewhere.
 
+## TCGplayer sort
+
+The default `price_asc` orders by item price alone, so the first row can be a
+low-price, high-shipping offer that is not actually the cheapest to buy.
+`total_asc` and `total_desc` order by `price + shipping_price`, which is how
+TCGplayer's own site orders offers:
+
+```ts
+for await (const offer of client.cards.listings.iterateTcgplayer(789, { sort: "total_asc" })) {
+  console.log(offer.price + (offer.shipping_price ?? 0), offer.seller_name);
+}
+```
+
+A cursor is bound to the sort family it was issued under, so do not reuse a
+`total_*` cursor with a `price_*` sort or the reverse. `min_price` and
+`max_price` filter item price under every sort.
+
 ## Cardmarket special attributes
 
 Cardmarket sells more than one kind of good under a single card. Every

@@ -98,7 +98,6 @@ export interface PriceHistoryPoint {
   avg: number;
   low: number;
   high: number;
-  sale_count: number;
 }
 
 /**
@@ -354,7 +353,18 @@ export interface SealedCardmarketListingsParams extends CursorParams {
   sort?: MarketplaceSort;
 }
 
-export type TcgplayerSort = MarketplaceSort;
+/**
+ * TCGplayer offers carry a shipping price, so they can be ordered by what a
+ * buyer actually pays. `price_asc` / `price_desc` order by item price alone.
+ * `total_asc` / `total_desc` order by `price + shipping_price`, which is how
+ * TCGplayer's own site orders offers and the order the snapshot was
+ * collected in, so `total_asc` puts the true cheapest offer first.
+ *
+ * A cursor is bound to the sort family it was issued under: a `total_*`
+ * cursor replayed under a `price_*` sort (or the reverse) is a 400.
+ * `min_price` / `max_price` filter item price under every sort.
+ */
+export type TcgplayerSort = MarketplaceSort | "total_asc" | "total_desc";
 
 export interface TcgplayerListingsParams extends CursorParams {
   condition?: string;
