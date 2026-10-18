@@ -1,6 +1,8 @@
 export type ErrorCode =
   | "bad_request"
   | "unauthorized"
+  | "missing_api_key"
+  | "invalid_api_key"
   | "forbidden"
   | "not_found"
   | "conflict"

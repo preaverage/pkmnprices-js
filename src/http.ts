@@ -9,7 +9,13 @@ import {
 
 export type FetchLike = typeof fetch;
 
-export type QueryValue = string | number | boolean | undefined | null;
+export type QueryValue =
+  | string
+  | number
+  | boolean
+  | readonly string[]
+  | undefined
+  | null;
 export type QueryParams = Record<string, QueryValue>;
 
 export type AuthScheme = "apiKey";
@@ -48,7 +54,8 @@ const buildQuery = (query: QueryParams | undefined): string => {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null) continue;
-    search.append(key, String(value));
+    // List filters (seller_country, sale_type) are comma-separated on the wire.
+    search.append(key, Array.isArray(value) ? value.join(",") : String(value));
   }
 
   const serialized = search.toString();

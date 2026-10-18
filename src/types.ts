@@ -107,19 +107,46 @@ export interface PriceHistoryPoint {
  * do, both serve the same sales, with titles describing whichever printing
  * the seller actually sold.
  *
- * - `exact` — the source page is mapped to this card and no other.
- * - `shared` — the page is shared, so this sale appears in another card's
+ * - `exact`: the source page is mapped to this card and no other.
+ * - `shared`: the page is shared, so this sale appears in another card's
  *   feed too and its title may describe that printing. Price the group, not
  *   the entity, or filter these out.
- * - `unknown` — collected before the source printing was recorded, so
- *   sharing cannot be determined.
+ * - `unknown`: no printing is recorded for this comp, so sharing cannot be
+ *   determined. Either it was collected before printings were recorded, or
+ *   its title did not narrow the sale to one printing.
  */
 export type ListingAttribution = "exact" | "shared" | "unknown";
+
+/**
+ * How an eBay comp sold. `fixed_price` includes listings that allowed offers
+ * but sold at the listed price. For `best_offer_accepted`, `price` is the
+ * amount the buyer paid.
+ */
+export type SaleType = "auction" | "fixed_price" | "best_offer_accepted";
 
 export interface EbayListing {
   id: number;
   title: string;
   price: number;
+  /**
+   * The currency of `price`, per comp: USD for ebay.com, EUR for German and
+   * Spanish card comps from ebay.de and ebay.es. Sealed comps are always USD.
+   */
+  currency: Currency;
+  /**
+   * The seller's location as an uppercase ISO 3166-1 alpha-2 code, such as
+   * "US" or "JP". Puerto Rico is "PR". Null when the location is unknown,
+   * which covers older comps, some comps mirrored from PriceCharting, and
+   * locations that don't match a country. Always null on sealed comps.
+   */
+  seller_country: string | null;
+  /**
+   * Null for comps collected before the field existed, comps mirrored from
+   * PriceCharting, and sealed comps. Older accepted offers can still carry
+   * the list price in `price` with nothing marking them, so pass every
+   * `sale_type` value as a filter to leave the null rows out.
+   */
+  sale_type: SaleType | null;
   grader: string | null;
   /**
    * Grades are strings, not numbers, and include halves ("9.5", "1.5"). A
@@ -133,7 +160,8 @@ export interface EbayListing {
    * above a Gem Mint ten, so a population that mixes them prices neither.
    * Null for the tier with no name of its own, which is nearly every comp,
    * and for comps collected before the tier was recorded. `grade: "10"`
-   * still matches every tier; split them by reading this.
+   * still matches every tier; split them by reading this, or filter with
+   * the `grade_qualifier` param.
    */
   grade_qualifier: string | null;
   /** The printing this comp was collected under, e.g. "Holofoil". */
@@ -206,6 +234,13 @@ export interface CardmarketListing {
    * reimplementing the price rule, treat only `0` as disqualifying.
    */
   sell_count: number | null;
+  /**
+   * The seller's location as an uppercase ISO 3166-1 alpha-2 code, such as
+   * "IT" or "DE", read from the offer's item-location flag. Same meaning as
+   * `seller_country` on eBay comps. Null for offers scraped before the field
+   * existed, offers that show no location, and unmatched countries.
+   */
+  seller_country: string | null;
 }
 
 export interface TcgplayerListing {
@@ -320,7 +355,30 @@ export type ListingSort = "date_desc" | "date_asc" | "price_asc" | "price_desc";
  */
 type SinceParam = { since?: string };
 
-export interface EbayListingsParams extends CursorParams, SinceParam {
+/**
+ * Seller country filters, as ISO 3166-1 alpha-2 codes. Pass a
+ * comma-separated string ("US,JP") or an array; case doesn't matter, and the
+ * API takes at most 30 codes. A malformed code is a 400.
+ *
+ * `seller_country` leaves out rows whose seller country is unknown;
+ * `exclude_seller_country` keeps them.
+ */
+type SellerCountryParams = {
+  seller_country?: string | string[];
+  exclude_seller_country?: string | string[];
+};
+
+/**
+ * `pristine` is a CGC Pristine 10, `black_label` a BGS Black Label 10, and
+ * `none` the tier with no name of its own (a plain CGC or BGS 10, and every
+ * other grade). `none` also returns comps whose tier was never recorded.
+ */
+export type GradeQualifierFilter = "pristine" | "black_label" | "none";
+
+export interface EbayListingsParams
+  extends CursorParams,
+    SinceParam,
+    SellerCountryParams {
   /**
    * `true` returns every comp with grading information, `false` returns
    * every comp without it. The two are exact complements.
@@ -332,6 +390,14 @@ export interface EbayListingsParams extends CursorParams, SinceParam {
   max_price?: number;
   /** Restrict to one printing, e.g. "Holofoil". */
   variant?: string;
+  /** `grade: "10", grade_qualifier: "none"` returns plain tens only. */
+  grade_qualifier?: GradeQualifierFilter;
+  /**
+   * Only comps that sold one of these ways. Comps with no known sale type
+   * are left out, so passing all three keeps every comp whose sale type is
+   * known.
+   */
+  sale_type?: SaleType | SaleType[];
   sort?: ListingSort;
 }
 
@@ -348,7 +414,9 @@ export interface SealedEbayListingsParams extends CursorParams, SinceParam {
 
 export type MarketplaceSort = "price_asc" | "price_desc";
 
-export interface CardmarketListingsParams extends CursorParams {
+export interface CardmarketListingsParams
+  extends CursorParams,
+    SellerCountryParams {
   condition?: string;
   /** "Reverse Holo" and "Reverse Holofoil" are equivalent. */
   variant?: string;
@@ -361,7 +429,9 @@ export interface CardmarketListingsParams extends CursorParams {
  * Sealed products take no `variant`: every sealed Cardmarket row is written
  * with an empty variant, so the filter could only ever exclude everything.
  */
-export interface SealedCardmarketListingsParams extends CursorParams {
+export interface SealedCardmarketListingsParams
+  extends CursorParams,
+    SellerCountryParams {
   condition?: string;
   min_price?: number;
   max_price?: number;
