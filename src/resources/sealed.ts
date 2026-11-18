@@ -1,10 +1,16 @@
 import type { HttpClient } from "../http.js";
-import { collect, iterateCursor, iteratePages } from "../pagination.js";
+import {
+  collect,
+  iterateCursor,
+  iterateList,
+  iteratePages,
+} from "../pagination.js";
 import type {
   CardmarketListing,
   CursorPaginated,
   EbayListing,
   GetSealedParams,
+  ListPaginated,
   ListSealedParams,
   Paginated,
   PriceHistoryParams,
@@ -46,22 +52,10 @@ class SealedListingsResource {
     return collect(this.iterateEbay(sealedId, params));
   }
 
-  // Sealed offers are normally condition "Unopened" with an empty printing, so
-  // the condition and printing filters rarely narrow anything here.
-  tcgplayer(
-    sealedId: number,
-    params?: TcgplayerListingsParams
-  ): Promise<CursorPaginated<TcgplayerListing>> {
-    return this.http.request({
-      path: `/v1/sealed/${sealedId}/listings/tcgplayer`,
-      query: { ...params },
-      auth: "apiKey",
-    });
-  }
-
   // `opened` is meaningful only on these rows: a card is neither sealed nor
   // unsealed. Like `signed`/`altered`/`graded`, an opened offer is returned but
-  // does not contribute to the market price.
+  // does not contribute to the market price. Pass `opened: false` to leave
+  // those offers out.
   cardmarket(
     sealedId: number,
     params?: SealedCardmarketListingsParams
@@ -87,6 +81,19 @@ class SealedListingsResource {
     params?: SealedCardmarketListingsParams
   ): Promise<CardmarketListing[]> {
     return collect(this.iterateCardmarket(sealedId, params));
+  }
+
+  // Sealed offers are normally condition "Unopened" with an empty printing, so
+  // the condition and printing filters rarely narrow anything here.
+  tcgplayer(
+    sealedId: number,
+    params?: TcgplayerListingsParams
+  ): Promise<CursorPaginated<TcgplayerListing>> {
+    return this.http.request({
+      path: `/v1/sealed/${sealedId}/listings/tcgplayer`,
+      query: { ...params },
+      auth: "apiKey",
+    });
   }
 
   iterateTcgplayer(
@@ -115,7 +122,7 @@ export class SealedResource {
   }
 
   // List results don't include prices. Use get() for a product's prices.
-  list(params?: ListSealedParams): Promise<Paginated<SealedSummary>> {
+  list(params?: ListSealedParams): Promise<ListPaginated<SealedSummary>> {
     return this.http.request({
       path: "/v1/sealed",
       query: { ...params },
@@ -132,10 +139,7 @@ export class SealedResource {
   }
 
   iterate(params?: ListSealedParams): AsyncGenerator<SealedSummary> {
-    return iteratePages(
-      (page) => this.list({ ...params, page }),
-      params?.page ?? 1
-    );
+    return iterateList((pageParams) => this.list(pageParams), params);
   }
 
   listAll(params?: ListSealedParams): Promise<SealedSummary[]> {

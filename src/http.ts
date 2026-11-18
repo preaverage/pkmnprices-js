@@ -4,6 +4,7 @@ import {
   PkmnPricesError,
   RateLimitError,
   type ApiErrorBody,
+  type LimitType,
   type RateLimitInfo,
 } from "./errors.js";
 
@@ -33,6 +34,7 @@ export interface RequestSpec {
   path: string;
   query?: QueryParams;
   auth?: AuthScheme;
+  accept?: string;
   signal?: AbortSignal;
 }
 
@@ -62,7 +64,7 @@ const buildQuery = (query: QueryParams | undefined): string => {
   return serialized ? `?${serialized}` : "";
 };
 
-const parseNumberHeader = (value: string | null): number | null => {
+export const parseNumberHeader = (value: string | null): number | null => {
   if (value === null) return null;
 
   const parsed = Number(value);
@@ -72,17 +74,29 @@ const parseNumberHeader = (value: string | null): number | null => {
 const parseRateLimit = (headers: Headers): RateLimitInfo => ({
   creditsCharged: parseNumberHeader(headers.get("x-credits-charged")),
   creditsLimit: parseNumberHeader(headers.get("x-credits-limit")),
+  creditsRemaining: parseNumberHeader(headers.get("x-credits-remaining")),
+  creditsReset: parseNumberHeader(headers.get("x-credits-reset")),
+  creditsBalance: parseNumberHeader(headers.get("x-credits-balance")),
   rateLimit: parseNumberHeader(headers.get("x-rate-limit")),
   rateRemaining: parseNumberHeader(headers.get("x-rate-remaining")),
+  rateReset: parseNumberHeader(headers.get("x-rate-reset")),
 });
 
-const parseRetryAfter = (headers: Headers): number | null => {
-  const raw = headers.get("retry-after");
-  if (raw === null) return null;
-
-  const seconds = Number(raw);
-  return Number.isFinite(seconds) ? seconds * 1000 : null;
+// The header and the body's retry_after carry the same number; the body is
+// the fallback for a proxy that strips the header.
+const parseRetryAfterMs = (
+  headers: Headers,
+  bodySeconds: number | null | undefined
+): number | null => {
+  const seconds = parseNumberHeader(headers.get("retry-after")) ?? bodySeconds;
+  return typeof seconds === "number" ? seconds * 1000 : null;
 };
+
+const parseLimitType = (value: unknown): LimitType | null =>
+  value === "per_minute" || value === "daily" ? value : null;
+
+const stringOrNull = (value: unknown): string | null =>
+  typeof value === "string" ? value : null;
 
 const isErrorBody = (body: unknown): body is ApiErrorBody => {
   return (
@@ -131,7 +145,9 @@ export class HttpClient {
     let attempt = 0;
     for (;;) {
       try {
-        return await this.attempt<T>(spec);
+        return await this.send(spec, (response) =>
+          this.parseJson<T>(response, spec)
+        );
       } catch (error) {
         const canRetry = attempt < maxRetries && this.isRetryable(error);
         if (!canRetry) throw error;
@@ -143,6 +159,17 @@ export class HttpClient {
         attempt += 1;
       }
     }
+  }
+
+  // For bodies the caller reads as a stream. One attempt and no retries,
+  // because a retried download can spend a daily download allowance twice.
+  // The timeout covers the wait for headers only; the body has no deadline.
+  stream(spec: RequestSpec): Promise<Response> {
+    return this.send(spec, async (response) => {
+      if (!response.ok) await this.throwApiError(response, spec);
+
+      return response;
+    });
   }
 
   private isRetryable(error: unknown): boolean {
@@ -162,11 +189,17 @@ export class HttpClient {
     return { "x-api-key": this.config.apiKey };
   }
 
-  private async attempt<T>(spec: RequestSpec): Promise<T> {
+  // `handle` runs inside the timeout and abort wiring, so a connection that
+  // stalls or is aborted mid-body fails the same way one that never answers
+  // does.
+  private async send<T>(
+    spec: RequestSpec,
+    handle: (response: Response) => Promise<T>
+  ): Promise<T> {
     const { baseUrl, fetch: fetchImpl, timeoutMs } = this.config;
     const url = `${baseUrl}${spec.path}${buildQuery(spec.query)}`;
 
-    const headers: Record<string, string> = { accept: "application/json" };
+    const headers: Record<string, string> = { accept: spec.accept ?? "application/json" };
     if (spec.auth) Object.assign(headers, this.authHeader(spec.auth));
 
     const controller = new AbortController();
@@ -174,14 +207,17 @@ export class HttpClient {
     const onExternalAbort = (): void => controller.abort(spec.signal?.reason);
     spec.signal?.addEventListener("abort", onExternalAbort, { once: true });
 
-    let response: Response;
     try {
-      response = await fetchImpl(url, {
+      const response = await fetchImpl(url, {
         method: spec.method ?? "GET",
         headers,
         signal: controller.signal,
       });
+
+      return await handle(response);
     } catch (cause) {
+      if (cause instanceof PkmnPricesError) throw cause;
+
       const wasTimeout = controller.signal.aborted && !spec.signal?.aborted;
       const message = wasTimeout
         ? `Request to ${spec.path} timed out after ${timeoutMs}ms`
@@ -191,48 +227,48 @@ export class HttpClient {
       clearTimeout(timeout);
       spec.signal?.removeEventListener("abort", onExternalAbort);
     }
-
-    return this.parse<T>(response, spec);
   }
 
-  private async parse<T>(response: Response, spec: RequestSpec): Promise<T> {
-    const rateLimit = parseRateLimit(response.headers);
-    const body = await this.readJson(response, spec);
+  private async parseJson<T>(response: Response, spec: RequestSpec): Promise<T> {
+    if (!response.ok) await this.throwApiError(response, spec);
 
-    if (response.ok) return body as T;
+    const text = await response.text();
+    if (!text) return undefined as T;
 
-    const code = isErrorBody(body) ? body.error.code : "unknown";
-    const message = isErrorBody(body)
-      ? body.error.message
-      : `Request to ${spec.path} failed with status ${response.status}`;
-    const docsUrl =
-      isErrorBody(body) && typeof body.error.docs_url === "string"
-        ? body.error.docs_url
-        : null;
+    try {
+      return JSON.parse(text) as T;
+    } catch (cause) {
+      throw new ConnectionError(
+        `Failed to parse JSON response from ${spec.path}`,
+        cause
+      );
+    }
+  }
+
+  private async throwApiError(response: Response, spec: RequestSpec): Promise<never> {
+    const body = await this.readErrorBody(response);
+    const detail = isErrorBody(body) ? body.error : null;
 
     throw createApiError({
       status: response.status,
-      code,
-      message,
-      docsUrl,
-      rateLimit,
-      retryAfterMs: parseRetryAfter(response.headers),
+      code: detail?.code ?? "unknown",
+      message:
+        detail?.message ??
+        `Request to ${spec.path} failed with status ${response.status}`,
+      docsUrl: stringOrNull(detail?.docs_url),
+      rateLimit: parseRateLimit(response.headers),
+      retryAfterMs: parseRetryAfterMs(response.headers, detail?.retry_after),
+      limitType: parseLimitType(detail?.limit_type),
+      resetsAt: stringOrNull(detail?.resets_at),
+      upgradeUrl: stringOrNull(detail?.upgrade_url),
     });
   }
 
-  private async readJson(response: Response, spec: RequestSpec): Promise<unknown> {
-    const text = await response.text();
-    if (!text) return undefined;
-
+  // An error from a proxy in front of the API may not be JSON at all.
+  private async readErrorBody(response: Response): Promise<unknown> {
     try {
-      return JSON.parse(text);
-    } catch (cause) {
-      if (response.ok) {
-        throw new ConnectionError(
-          `Failed to parse JSON response from ${spec.path}`,
-          cause
-        );
-      }
+      return JSON.parse(await response.text());
+    } catch {
       return undefined;
     }
   }

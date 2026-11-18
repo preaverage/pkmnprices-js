@@ -1,18 +1,31 @@
+import { openExport } from "../export.js";
 import type { HttpClient } from "../http.js";
-import { collect, iterateCursor, iteratePages } from "../pagination.js";
+import {
+  collect,
+  iterateCursor,
+  iterateList,
+  iteratePages,
+} from "../pagination.js";
 import type {
   Card,
+  CardMarkers,
   CardmarketListing,
   CardmarketListingsParams,
+  CardPopulation,
+  CardsExport,
   CardSummary,
   CursorPaginated,
   EbayListing,
   EbayListingsParams,
   GetCardParams,
   ListCardsParams,
+  ListPaginated,
   Paginated,
+  PopulationParams,
   PriceHistoryParams,
   PriceHistoryPoint,
+  SalesVolumeParams,
+  SalesVolumePoint,
   TcgplayerListing,
   TcgplayerListingsParams,
 } from "../types.js";
@@ -106,7 +119,7 @@ export class CardsResource {
   }
 
   // List results don't include prices. Use get() for a card's prices.
-  list(params?: ListCardsParams): Promise<Paginated<CardSummary>> {
+  list(params?: ListCardsParams): Promise<ListPaginated<CardSummary>> {
     return this.http.request({
       path: "/v1/cards",
       query: { ...params },
@@ -123,10 +136,7 @@ export class CardsResource {
   }
 
   iterate(params?: ListCardsParams): AsyncGenerator<CardSummary> {
-    return iteratePages(
-      (page) => this.list({ ...params, page }),
-      params?.page ?? 1
-    );
+    return iterateList((pageParams) => this.list(pageParams), params);
   }
 
   listAll(params?: ListCardsParams): Promise<CardSummary[]> {
@@ -153,5 +163,51 @@ export class CardsResource {
       (page) => this.priceHistory(id, { ...params, page }),
       params?.page ?? 1
     );
+  }
+
+  // Daily eBay sold-comp counts, newest day first. eBay only: TCGplayer and
+  // Cardmarket sales are not recorded, so this is not total market volume.
+  // Pro plan and up.
+  salesVolume(
+    id: number,
+    params?: SalesVolumeParams
+  ): Promise<Paginated<SalesVolumePoint>> {
+    return this.http.request({
+      path: `/v1/cards/${id}/sales/volume`,
+      query: { ...params },
+      auth: "apiKey",
+    });
+  }
+
+  iterateSalesVolume(
+    id: number,
+    params?: SalesVolumeParams
+  ): AsyncGenerator<SalesVolumePoint> {
+    return iteratePages(
+      (page) => this.salesVolume(id, { ...params, page }),
+      params?.page ?? 1
+    );
+  }
+
+  // Graded population per variant, from the PSA, BGS, SGC and CGC reports.
+  // One credit per request. Pro plan and up.
+  population(id: number, params?: PopulationParams): Promise<CardPopulation> {
+    return this.http.request({
+      path: `/v1/cards/${id}/population`,
+      query: { ...params },
+      auth: "apiKey",
+    });
+  }
+
+  // Every value the pattern, stamp, distribution and placement filters accept.
+  markers(): Promise<CardMarkers> {
+    return this.http.request({ path: "/v1/cards/markers", auth: "apiKey" });
+  }
+
+  // The whole price catalog as one gzipped CSV. Scale plan and up. Not
+  // charged in credits, but limited to two downloads per UTC day, so it is
+  // never retried automatically.
+  export(): Promise<CardsExport> {
+    return openExport(this.http, "/v1/export/cards");
   }
 }
