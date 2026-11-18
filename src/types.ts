@@ -3,7 +3,11 @@ export type Currency = "USD" | "EUR";
 // Accepted on the wire case-insensitively.
 export type CurrencyFilter = "usd" | "eur" | "USD" | "EUR";
 
-export type PriceSource = "tcgplayer" | "ebay" | "cardmarket";
+/**
+ * Where a market price comes from. eBay is not a price source: its sold comps
+ * are individual sales, served by the eBay listings methods only.
+ */
+export type PriceSource = "tcgplayer" | "cardmarket";
 
 export interface PageInfo {
   page: number;
@@ -15,6 +19,21 @@ export interface PageInfo {
 export interface Paginated<T> {
   data: T[];
   pagination: PageInfo;
+}
+
+/** Pagination on the set, card and sealed lists, which also page by keyset. */
+export interface ListPageInfo extends PageInfo {
+  /**
+   * Pass as `cursor` to read the next page without an offset. Null on the
+   * last page, and on price-sorted or price-filtered lists, which only page
+   * by number.
+   */
+  next_cursor: string | null;
+}
+
+export interface ListPaginated<T> {
+  data: T[];
+  pagination: ListPageInfo;
 }
 
 export interface CursorInfo {
@@ -33,6 +52,16 @@ export interface PageParams {
   per_page?: number;
 }
 
+export interface ListPageParams extends PageParams {
+  /**
+   * The previous response's `pagination.next_cursor`. Replaces `page`: send
+   * one or the other. A cursor costs the same on page 500 as on page 1 and
+   * cannot repeat or skip a row added mid-walk. Refused with a 400 on lists
+   * filtered or sorted by price.
+   */
+  cursor?: string;
+}
+
 export interface CursorParams {
   limit?: number;
   cursor?: string;
@@ -45,10 +74,11 @@ export interface SetRef {
 
 export interface Set {
   id: number;
-  tcg_player_id: number;
+  /** Null for sets with no TCGplayer group, e.g. German and Spanish sets. */
+  tcg_player_id: number | null;
   name: string;
   language: string;
-  card_count: number;
+  card_count: number | null;
 }
 
 export interface Price {
@@ -57,18 +87,29 @@ export interface Price {
   condition: string | null;
   variant: string | null;
   /** Current price for this exact source, condition, and variant. */
-  market_price: number;
+  market_price: number | null;
   created_at: string;
 }
 
 export interface CardSummary {
   id: number;
-  tcg_player_id: number;
+  /** Null for cards with no TCGplayer product, e.g. German and Spanish cards. */
+  tcg_player_id: number | null;
   name: string;
   image_url: string | null;
   number: string | null;
   total_set_number: string | null;
   rarity: string | null;
+  /** Foil pattern of this printing, e.g. "Poke Ball Pattern", "Cosmos Holo". */
+  pattern: string | null;
+  /** Stamp or promotional release, e.g. "GYM", "Costco Exclusive". */
+  stamp: string | null;
+  /** Number printed inside the stamp (Battle Academy decks), e.g. "15". */
+  stamp_number: string | null;
+  /** How this copy was handed out, e.g. "Staff". */
+  distribution: string | null;
+  /** Result a prize copy was awarded for, e.g. "1st Place", "Top 16". */
+  placement: string | null;
   artist: string | null;
   hp: number | null;
   set: SetRef;
@@ -89,15 +130,135 @@ export interface Card extends CardSummary {
   prices: Price[];
 }
 
+export interface MarkerCount {
+  /** The value as it appears on cards and as the filter expects it. */
+  value: string;
+  cards: number;
+}
+
+/**
+ * Every value the `pattern`, `stamp`, `distribution` and `placement` card
+ * filters accept, most common first.
+ */
+export interface CardMarkers {
+  patterns: MarkerCount[];
+  stamps: MarkerCount[];
+  distributions: MarkerCount[];
+  placements: MarkerCount[];
+}
+
 export interface PriceHistoryPoint {
   date: string;
   source: PriceSource;
   currency: Currency;
   condition: string | null;
   variant: string | null;
-  avg: number;
-  low: number;
-  high: number;
+  avg: number | null;
+  low: number | null;
+  high: number | null;
+}
+
+/** One day of eBay sold comps for a card, per currency, variant and graded. */
+export interface SalesVolumePoint {
+  date: string;
+  currency: Currency;
+  /**
+   * Printing the sales were filed under. Null when the listing title did not
+   * narrow the sale to one printing; keep that bucket apart from named ones.
+   */
+  variant: string | null;
+  /** A slab (a grader or grade is recorded) as against a raw card. */
+  graded: boolean;
+  /** Sold comps that day, every one of them. */
+  sales: number;
+  /**
+   * Sales that went into `median`: all of them except accepted Best Offers,
+   * whose listed price can differ from what the buyer paid.
+   */
+  priced_sales: number;
+  median: number | null;
+}
+
+/** One grader's counts for one printing. */
+export interface GraderPopulation {
+  total: number;
+  /** Copies at this grader's gem grade or higher. */
+  gems: number;
+  /** `gems` as a percentage of `total`, two decimals. */
+  gem_rate: number;
+  /**
+   * Copies at each numeric grade. Keys are "1" to "10" with halves as "8.5".
+   * BGS has no plain "10", only `pristine` and `black_label`.
+   */
+  grades: Record<string, number>;
+  /** 10 Pristine. Null for a grader that does not issue it (PSA). */
+  pristine: number | null;
+  /** BGS Black Label or CGC Perfect 10. Null for a grader with neither. */
+  black_label: number | null;
+  authentic: number;
+  /** CGC's "Authentic Altered". Null for the other graders. */
+  altered: number | null;
+  /** Copies graded with a qualifier (PSA's OC, MK, ST and so on). */
+  qualified: number;
+  /** The last day this grader's count changed, as `YYYY-MM-DD`. */
+  last_population_change: string | null;
+  /** The grader's own population report page for the set. */
+  pop_report_url: string | null;
+  /** PSA's spec number for the card. Null for other graders. */
+  spec_id: string | null;
+  /** How the grader names the card in its own report. */
+  description: string;
+}
+
+/** How many copies of one printing PSA, BGS, SGC and CGC have graded. */
+export interface VariantPopulation {
+  /** The variant as it appears in price rows, e.g. "Reverse Holofoil". */
+  variant: string;
+  /** Every graded copy across all graders, authentic and qualified included. */
+  total_population: number;
+  /** Copies at each grader's gem grade or higher: PSA 10, BGS 9.5 and up. */
+  total_gems: number;
+  /**
+   * `total_gems` as a percentage of `total_population`, two decimals. Null
+   * when nothing has been graded.
+   */
+  gem_rate: number | null;
+  /**
+   * Copies at each numeric grade, summed across graders. Keys are "1" to
+   * "10" with halves as "8.5". A grade nobody issued is absent, not zero.
+   */
+  grades: Record<string, number>;
+  /** 10 Pristine across BGS, CGC and SGC. Above a plain 10, not in `grades`. */
+  pristine: number;
+  /** BGS Black Label and CGC Perfect 10, summed. Above Pristine. */
+  black_label: number;
+  /** Graded authentic without a numeric grade. */
+  authentic: number;
+  /**
+   * For each key in `grades`, the percentage of numerically graded copies
+   * that graded higher. `percent_higher["8.5"]` is the share that came back a
+   * 9 or better, the usual input to a grading ROI estimate.
+   */
+  percent_higher: Record<string, number>;
+  /**
+   * Each grader's own counts, keyed "PSA", "BGS", "SGC", "CGC". A grader
+   * with no copies of this printing on record is absent.
+   */
+  graders: Record<string, GraderPopulation>;
+  /** The last day any grader's count changed, as `YYYY-MM-DD`. */
+  last_population_change: string | null;
+  /** When these counts were last refreshed. */
+  updated_at: string;
+}
+
+/**
+ * Graded populations for one card. A variant that could not be tied to
+ * population records is left out, so `variants` can be shorter than the
+ * card's variant list, or empty. An empty list is not a population of zero.
+ */
+export interface CardPopulation {
+  card_id: number;
+  variants: VariantPopulation[];
 }
 
 /**
@@ -174,6 +335,15 @@ export interface EbayListing {
    * checkpoint on when polling `since` for new comps.
    */
   ingested_at: string;
+  /**
+   * When a field of this comp last changed after it went in: a corrected
+   * grade, price, sale type, printing or title, or a move to the card it was
+   * for. Null when nothing has changed since corrections began being
+   * recorded on 2026-10-20, and on every sealed comp. A correction never
+   * moves `ingested_at`, so a `since` poll does not return it. Poll
+   * `updated_since` and replace your copy by `id`.
+   */
+  updated_at: string | null;
   listing_url: string | null;
 }
 
@@ -197,8 +367,9 @@ export interface CardmarketListing {
    *
    * Because of that, the cheapest row returned by `cardmarket()` is not
    * necessarily the card's `market_price`. Filter these out before deriving a
-   * price of your own — along with `opened`, and with any row whose
-   * `sell_count` is `0`.
+   * price of your own, along with `opened` and any row whose `sell_count` is
+   * `0`. The `graded`, `signed`, `altered` and `opened` params do it
+   * server-side.
    */
   signed: boolean;
   altered: boolean;
@@ -206,22 +377,22 @@ export interface CardmarketListing {
   /**
    * Slab details, named to match the graded eBay sale shape so "PSA 10"
    * renders the same way whichever source it came from. Null unless `graded`
-   * is true, and possibly null even then — Cardmarket flags a slab without
+   * is true, and possibly null even then: Cardmarket flags a slab without
    * always naming the grader, and these are read from free-text seller
    * comments.
    */
   grader: string | null;
   grade: string | null;
   /**
-   * The offer's own seller says the item is not sealed — an opened wrapper, or
+   * The offer's own seller says the item is not sealed: an opened wrapper, or
    * a display missing its shrink. Sealed products only; always `false` on a
    * card listing, where the distinction does not exist.
    *
    * Treated like `signed`/`altered`/`graded`: a real offer, excluded from the
    * market price. A Jungle booster pack whose every other offer sits between
    * EUR 799 and EUR 950 carries one at EUR 10.00 reading "Not Sealed (open,
-   * just the booster)" — a real price for an opened pack, not a EUR 10 Jungle
-   * booster pack.
+   * just the booster)". That is a real price for an opened pack, not a EUR 10
+   * Jungle booster pack.
    */
   opened: boolean;
   /**
@@ -279,7 +450,7 @@ export interface TcgplayerListing {
 
 export interface SealedSummary {
   id: number;
-  tcg_player_id: number;
+  tcg_player_id: number | null;
   name: string;
   image_url: string | null;
   set: SetRef;
@@ -296,26 +467,60 @@ export type HealthStatus = "healthy" | "degraded" | "unreachable";
 export interface Health {
   status: HealthStatus;
   database: string;
+  /** Server time this check ran. Tells a live response from a cached one. */
+  timestamp: string;
+  /** Deployed API version. */
+  version: string;
 }
 
-export interface ListSetsParams extends PageParams {
+/**
+ * The whole price catalog as one gzipped CSV. One row per card, currency,
+ * condition and variant, with the current raw market price.
+ */
+export interface CardsExport {
+  /** The gzip bytes, streamed as the server produces them. */
+  body: ReadableStream<Uint8Array>;
+  /** Suggested filename, e.g. "pkmnprices-cards-2026-10-26.csv.gz". */
+  filename: string | null;
+  /** Downloads left today. Each account gets two per UTC day. */
+  downloadsRemaining: number | null;
+  /** Reads `body` to the end. The file is large; prefer the stream. */
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+
+export interface ListSetsParams extends ListPageParams {
   name?: string;
   language?: string;
 }
 
 export type CardSort = "price_asc" | "price_desc";
 
-export interface ListCardsParams extends PageParams {
+export interface ListCardsParams extends ListPageParams {
+  /** Substring match. */
   name?: string;
   set_id?: number;
   tcg_player_id?: number;
+  /** Leading zeros are ignored, so "54" finds "054". */
   number?: string;
   total_set_number?: string;
+  /** Matched exactly as spelled in responses, e.g. "Double Rare". */
   rarity?: string;
+  /**
+   * The four marker filters match exactly as spelled in responses.
+   * `cards.markers()` lists every value they accept.
+   */
+  pattern?: string;
+  stamp?: string;
+  distribution?: string;
+  placement?: string;
   stage?: string;
   card_type?: string;
   weakness?: string;
   energy_type?: string;
+  /** Case-insensitive substring match on the illustrator's name. */
+  artist?: string;
+  /** Exact HP. */
+  hp?: number;
   language?: string;
   currency?: CurrencyFilter;
   condition?: string;
@@ -332,13 +537,33 @@ export interface GetCardParams {
 }
 
 export interface PriceHistoryParams {
+  /** Window in days, 1 to 365, as "90d" or "90". Default "30d". */
   period?: string;
   currency?: CurrencyFilter;
+  /** Rows per page, not days. Default 30, max 365. */
   limit?: number;
   page?: number;
   /** Exact match, e.g. "Near Mint" (TCGplayer) or "Excellent" (Cardmarket). */
   condition?: string;
   /** Exact match, e.g. "Holofoil". */
+  variant?: string;
+}
+
+export interface SalesVolumeParams {
+  /** Window in days, 1 to 365, as "90d" or "90". Default "30d". */
+  period?: string;
+  currency?: CurrencyFilter;
+  /** Exact match, e.g. "Holofoil". */
+  variant?: string;
+  /** `true` for graded slabs only, `false` for raw cards only. */
+  graded?: boolean;
+  /** Rows per page, not days. Default 30, max 365. */
+  limit?: number;
+  page?: number;
+}
+
+export interface PopulationParams {
+  /** Only this variant, spelled as in price rows, e.g. "Reverse Holofoil". */
   variant?: string;
 }
 
@@ -354,6 +579,14 @@ export type ListingSort = "date_desc" | "date_asc" | "price_asc" | "price_desc";
  * rejected rather than ignored.
  */
 type SinceParam = { since?: string };
+
+/**
+ * Only comps sold in the last N days, as "90d" or "90" (1 to 365). Bounds
+ * `sold_at`, where `since` bounds `ingested_at`. Use it for pricing, not for
+ * syncing: comps often arrive days after the sale, so a poll on `period`
+ * would miss the late ones.
+ */
+type SoldPeriodParam = { period?: string };
 
 /**
  * Seller country filters, as ISO 3166-1 alpha-2 codes. Pass a
@@ -378,6 +611,7 @@ export type GradeQualifierFilter = "pristine" | "black_label" | "none";
 export interface EbayListingsParams
   extends CursorParams,
     SinceParam,
+    SoldPeriodParam,
     SellerCountryParams {
   /**
    * `true` returns every comp with grading information, `false` returns
@@ -398,6 +632,12 @@ export interface EbayListingsParams
    * known.
    */
   sale_type?: SaleType | SaleType[];
+  /**
+   * Only comps corrected after this instant, in the same format as `since`.
+   * Bounds `updated_at`. If you keep a copy of comps, poll this alongside
+   * `since` and replace rows by `id`.
+   */
+  updated_since?: string;
   sort?: ListingSort;
 }
 
@@ -406,7 +646,10 @@ export interface EbayListingsParams
  * Sealed products map one source page each with no printing to distinguish,
  * so there is no `variant` filter either.
  */
-export interface SealedEbayListingsParams extends CursorParams, SinceParam {
+export interface SealedEbayListingsParams
+  extends CursorParams,
+    SinceParam,
+    SoldPeriodParam {
   min_price?: number;
   max_price?: number;
   sort?: ListingSort;
@@ -414,9 +657,32 @@ export interface SealedEbayListingsParams extends CursorParams, SinceParam {
 
 export type MarketplaceSort = "price_asc" | "price_desc";
 
+/**
+ * The filters that drop offers which are real but do not set a market price.
+ * `graded: false, signed: false, altered: false` leaves clean raw copies.
+ */
+type CardmarketAttributeParams = {
+  /** `true` for graded offers only, `false` for raw offers only. */
+  graded?: boolean;
+  /** Only graded offers from this grader, e.g. "PSA". Case-insensitive. */
+  grader?: string;
+  /** Only graded offers at this grade, e.g. "10" or "9.5". */
+  grade?: string;
+  /** `true` for signed offers only, `false` to leave signed offers out. */
+  signed?: boolean;
+  /** `true` for altered offers only, `false` to leave altered offers out. */
+  altered?: boolean;
+  /**
+   * Only offers from sellers with at least this many completed sales. Offers
+   * with no recorded `sell_count` are left out.
+   */
+  min_sell_count?: number;
+};
+
 export interface CardmarketListingsParams
   extends CursorParams,
-    SellerCountryParams {
+    SellerCountryParams,
+    CardmarketAttributeParams {
   condition?: string;
   /** "Reverse Holo" and "Reverse Holofoil" are equivalent. */
   variant?: string;
@@ -431,10 +697,16 @@ export interface CardmarketListingsParams
  */
 export interface SealedCardmarketListingsParams
   extends CursorParams,
-    SellerCountryParams {
+    SellerCountryParams,
+    CardmarketAttributeParams {
   condition?: string;
   min_price?: number;
   max_price?: number;
+  /**
+   * `true` for offers whose seller says the product is not sealed, `false`
+   * to leave those out.
+   */
+  opened?: boolean;
   sort?: MarketplaceSort;
 }
 
@@ -460,8 +732,9 @@ export interface TcgplayerListingsParams extends CursorParams {
   sort?: TcgplayerSort;
 }
 
-export interface ListSealedParams extends PageParams {
+export interface ListSealedParams extends ListPageParams {
   set_id?: number;
+  tcg_player_id?: number;
   name?: string;
   language?: string;
   currency?: CurrencyFilter;

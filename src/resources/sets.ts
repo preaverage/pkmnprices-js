@@ -1,11 +1,11 @@
 import type { HttpClient } from "../http.js";
-import { collect, iteratePages } from "../pagination.js";
-import type { ListSetsParams, Paginated, Set } from "../types.js";
+import { collect, iterateList } from "../pagination.js";
+import type { ListPaginated, ListSetsParams, Set } from "../types.js";
 
 export class SetsResource {
   constructor(private readonly http: HttpClient) {}
 
-  list(params?: ListSetsParams): Promise<Paginated<Set>> {
+  list(params?: ListSetsParams): Promise<ListPaginated<Set>> {
     return this.http.request({
       path: "/v1/sets",
       query: { ...params },
@@ -18,10 +18,7 @@ export class SetsResource {
   }
 
   iterate(params?: ListSetsParams): AsyncGenerator<Set> {
-    return iteratePages(
-      (page) => this.list({ ...params, page }),
-      params?.page ?? 1
-    );
+    return iterateList((pageParams) => this.list(pageParams), params);
   }
 
   listAll(params?: ListSetsParams): Promise<Set[]> {
